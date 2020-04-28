@@ -1,7 +1,7 @@
 # sigvae-torch
 A Pytorch implementation of http://papers.nips.cc/paper/9255-semi-implicit-graph-variational-auto-encoders
 
-The work is re-implemented with python3/3.6.3 and torch 1.4.0
+The work is programed with python3/3.6.3 and torch 1.4.0
 
 # Updates 
 ### (w.r.t. the original [implementation](https://github.com/sigvae/SIGraphVAE) )
