@@ -13,6 +13,4 @@ For example, run sigvae-torch on cora dataset with bernoulli-poisson decoder, an
 ```
 The arguments are default to ones that yield optimal results.
 
-# Acknowledgement
-This work is developed from https://github.com/zfjsail/gae-pytorch, thank you [https://github.com/zfjsail](@zfjsail) for sharing!
-Also appreciate the technical support from [Chaojie](https://chaojiewang94.github.io/).
+
