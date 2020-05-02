@@ -39,7 +39,7 @@ def loss_function(preds, labels, mu, logvar, emb, eps, n_nodes, norm, pos_weight
     """
     def get_rec(pred):
         # pred = torch.sigmoid(pred)
-        log_lik = norm * (pos_weight * labels * torch.log(pred + SMALL) + (1 - labels) * torch.log(1 - pred + SMALL))  # N * N
+        log_lik = norm * (pos_weight * labels * torch.log(pred) + (1 - labels) * torch.log(1 - pred))  # N * N
         rec = -log_lik.mean()
         return rec
 
@@ -66,6 +66,8 @@ def loss_function(preds, labels, mu, logvar, emb, eps, n_nodes, norm, pos_weight
 
     mu_mix, mu_emb = mu[:K, :], mu[K:, :]
     std_mix, std_emb = std[:K, :], std[K:, :]
+
+    preds = torch.clamp(preds, min=SMALL, max=1-SMALL)
 
     # compute rec_cost
     rec_costs = torch.stack(

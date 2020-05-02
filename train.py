@@ -98,7 +98,7 @@ def gae_for(args):
         t = time.time()
         model.train()
         optimizer.zero_grad()
-        recovered, mu, logvar, z, z_scaled, eps, rk = model(features, adj_norm)
+        recovered, mu, logvar, z, z_scaled, eps, rk, snr = model(features, adj_norm)
         loss_rec, loss_prior, loss_post = loss_function(
             preds=recovered, 
             labels=adj_label,
@@ -134,16 +134,19 @@ def gae_for(args):
               )
         # print(rk.detach().cpu().numpy())
 
+        cur_snr = snr.detach().cpu().numpy()
+        print("SNR: ", cur_snr)
+
 
         if((epoch+1) % args.monit == 0):
             model.eval()
-            recovered, mu, logvar, z, z_scaled, eps, rk = model(features, adj_norm)
+            recovered, mu, logvar, z, z_scaled, eps, rk, _ = model(features, adj_norm)
             hidden_emb = z_scaled.detach().cpu().numpy()
             roc_score, ap_score = get_roc_score(hidden_emb, test_edges, test_edges_false, args.gdc)
             rslt = "Test ROC score: {:.4f}, Test AP score: {:.4f}\n".format(roc_score, ap_score)
             print("\n", rslt, "\n")
-            # with open("results.txt", "a+") as f:
-            #     f.write(rslt)
+            with open("results.txt", "a+") as f:
+                f.write(rslt)
 
     print("Optimization Finished!")
     

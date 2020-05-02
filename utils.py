@@ -1,5 +1,5 @@
 import pickle as pkl
-
+import sys
 import networkx as nx
 import numpy as np
 import scipy.sparse as sp
@@ -16,13 +16,18 @@ def load_data(dataset):
         fix Pickle incompatibility of numpy arrays between Python 2 and 3
         https://stackoverflow.com/questions/11305790/pickle-incompatibility-of-numpy-arrays-between-python-2-and-3
         '''
-        with open("data/ind.{}.{}".format(dataset, names[i]), 'rb') as rf:
-            u = pkl._Unpickler(rf)
-            u.encoding = 'latin1'
-            cur_data = u.load()
-            objects.append(cur_data)
-        # objects.append(
-        #     pkl.load(open("data/ind.{}.{}".format(dataset, names[i]), 'rb')))
+        # with open("data/ind.{}.{}".format(dataset, names[i]), 'rb') as rf:
+        #     u = pkl._Unpickler(rf)
+        #     u.encoding = 'latin1'
+        #     cur_data = u.load()
+        #     objects.append(cur_data)
+
+        with open("data/ind.{}.{}".format(dataset, names[i]), 'rb') as f:
+            if sys.version_info > (3, 0):
+                objects.append(pkl.load(f, encoding='latin1'))
+            else:
+                objects.append(pkl.load(f))
+        
     x, tx, allx, graph = tuple(objects)
     test_idx_reorder = parse_index_file(
         "data/ind.{}.test.index".format(dataset))
