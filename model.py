@@ -15,6 +15,7 @@ class GCNModelSIGVAE(nn.Module):
         super(GCNModelSIGVAE, self).__init__()
 
         self.gce = GraphConvolution(ndim, hidden_dim1, dropout, act=F.relu)
+        # self.gc0 = GraphConvolution(input_feat_dim, hidden_dim1, dropout, act=F.relu)
         self.gc1 = GraphConvolution(input_feat_dim, hidden_dim1, dropout, act=F.relu)
         self.gc2 = GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=lambda x: x)
         self.gc3 = GraphConvolution(hidden_dim1, hidden_dim2, dropout, act=lambda x: x)
@@ -37,15 +38,34 @@ class GCNModelSIGVAE(nn.Module):
         self.J = copyJ
         self.ndim = ndim
 
+        # parameters in network gc1 and gce are NOT identically distributed, so we need to reweight the output 
+        # of gce() so that the effect of hiddenx + hiddene is equivalent to gc(x || e).
+        self.reweight = ((self.ndim + hidden_dim1) / (input_feat_dim + hidden_dim1))**(.5)
+
 
     def encode(self, x, adj):
         assert len(x.shape) == 3, 'The input tensor dimension is not 3!'
         # Without torch.Size(), an error would occur while resampling.
-        e = self.ndist.sample(torch.Size([self.K+self.J, x.shape[1], self.ndim]))
-        e = torch.squeeze(e, -1)
-        hiddene = self.gce(e, adj)
         hiddenx = self.gc1(x, adj)
+
+        if self.ndim >= 1:
+            e = self.ndist.sample(torch.Size([self.K+self.J, x.shape[1], self.ndim]))
+            e = torch.squeeze(e, -1)
+            e = e.mul(self.reweight)
+            hiddene = self.gce(e, adj)
+        else:
+            print("no randomness.")
+            hiddene = torch.zeros(self.K+self.J, hiddenx.shape[1], hiddenx.shape[2], device=self.device)
+        
+        
+        
         hidden1 = hiddenx + hiddene
+
+        # hiddens = self.gc0(x, adj)
+
+        p_signal = hiddenx.pow(2.).mean()
+        p_noise = hiddene.pow(2.).mean([-2,-1])
+        snr = (p_signal / p_noise)
         
 
         # below are 3 options for producing logvar
@@ -66,7 +86,7 @@ class GCNModelSIGVAE(nn.Module):
         
         logvar = self.gc3(hidden_sd, adj)
         
-        return mu, logvar
+        return mu, logvar, snr
 
     def reparameterize(self, mu, logvar):
         std = torch.exp(logvar / 2.)
@@ -75,7 +95,7 @@ class GCNModelSIGVAE(nn.Module):
         # return mu, eps
 
     def forward(self, x, adj):
-        mu, logvar = self.encode(x, adj)
+        mu, logvar, snr = self.encode(x, adj)
         
         emb_mu = mu[self.K:, :]
         emb_logvar = logvar[self.K:, :]
@@ -87,7 +107,7 @@ class GCNModelSIGVAE(nn.Module):
 
         adj_, z_scaled, rk = self.dc(z)
 
-        return adj_, mu, logvar, z, z_scaled, eps, rk
+        return adj_, mu, logvar, z, z_scaled, eps, rk, snr
 
 
 class GraphDecoder(nn.Module):
@@ -124,7 +144,7 @@ class GraphDecoder(nn.Module):
             adj = torch.sigmoid(adj_lgt)
         elif self.gdc == 'bp':
             # 1 - exp( - exp(ZZ'))
-            # adj_lgt = torch.clamp(adj_lgt, min=-np.Inf, max=25)
+            adj_lgt = torch.clamp(adj_lgt, min=-np.Inf, max=25)
             adj = 1 - torch.exp(-adj_lgt.exp())
 
 
